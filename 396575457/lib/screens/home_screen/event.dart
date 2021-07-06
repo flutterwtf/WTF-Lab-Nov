@@ -1,23 +1,34 @@
 import 'package:flutter/material.dart';
 
-import '../create_event_screen/messages_store.dart';
+import '../create_event_screen/message.dart';
 
 class Event {
+  int indexOfAvatar;
+  bool isSelected = false;
   String title;
-  CircleAvatar avatar;
-  EventsStore messages;
 
-  Event({this.title, this.avatar, this.messages});
+  List<Message> messages;
+  CircleAvatar avatar;
+
+  Event({this.title, this.avatar, this.messages, this.indexOfAvatar});
 
   String get titleString {
     return title;
   }
 
-  EventsStore get messagesData {
+  List<Message> get messagesData {
     return messages;
   }
 
   CircleAvatar get circleAvatar {
     return avatar;
   }
+
+  bool get isEventSelected {
+    return isSelected;
+  }
+
+  void newMessageAdd(String message) => messages.add(Message(message));
+
+  void inverseSelect() => isSelected = !isSelected;
 }

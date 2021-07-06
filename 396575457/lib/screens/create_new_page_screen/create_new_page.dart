@@ -1,76 +1,111 @@
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
-import '../create_event_screen/messages_store.dart';
+import '../../list_icons.dart';
 import '../home_screen/event.dart';
-import 'list_icons.dart';
-
-typedef VoidCallBack = void Function(Event);
+import 'cubit_create_page.dart';
+import 'states_create_page.dart';
 
 class CreateNewPage extends StatefulWidget {
+  final List<Event> eventList;
+  final bool isEditing;
+  final int index;
+
+  CreateNewPage({Key key, this.eventList, this.isEditing, this.index})
+      : super(key: key);
+
   @override
-  _CreateNewPageState createState() => _CreateNewPageState();
-
-  final VoidCallBack _callback;
-
-  CreateNewPage(this._callback);
+  _CreateNewPageState createState() =>
+      _CreateNewPageState(eventList, isEditing, index);
 }
 
 class _CreateNewPageState extends State<CreateNewPage> {
-  final _textController = TextEditingController();
-  bool _isIconChosen = false;
-  int _chosenIconIndex;
+  final FocusNode _focusNode = FocusNode();
+  final TextEditingController _textController = TextEditingController();
+
+  bool isEditing;
+  int index;
+
+  List<Event> eventList;
+  CubitCreatePage _cubit;
+
+  _CreateNewPageState(this.eventList, this.isEditing, this.index) {
+    _cubit = CubitCreatePage(StatesCreatePage(0, eventList));
+  }
+
+  @override
+  void initState() {
+    if (isEditing) {
+      _cubit.state.indexOfSelectedIcon = eventList[index].indexOfAvatar;
+      _textController.text = eventList[index].title;
+      _focusNode.requestFocus();
+    }
+    super.initState();
+  }
 
   @override
   Widget build(BuildContext context) {
-    @override
-    void dispose() {
-      _textController.dispose();
-      super.dispose();
-    }
-
-    var floatingActionButton = FloatingActionButton(
-      onPressed: () {
-        var newEvent = Event(
-          title: _textController.text,
-          avatar: _circleAvatar(
-            listIcons[_chosenIconIndex ?? 0],
-          ),
-          messages: EventsStore(),
+    return BlocBuilder(
+      cubit: _cubit,
+      builder: (context, state) {
+        return Scaffold(
+          appBar: _appBar,
+          body: _createNewPageBody,
+          floatingActionButton: _floatingActionButton,
         );
-        widget._callback(newEvent);
-        Navigator.pop(context);
       },
-      child: Icon(
-        Icons.check,
-        color: Colors.black,
+    );
+  }
+
+  AppBar get _appBar {
+    return AppBar(
+      title: Padding(
+        padding: EdgeInsets.fromLTRB(35, 0, 0, 0),
+        child: Text('Create a new event page'),
       ),
     );
-    return Scaffold(
-      appBar: AppBar(
-        title: Text('Create a new Page'),
-      ),
-      body: Column(
-        children: [
-          Padding(
-            padding: EdgeInsets.all(10),
-            child: Container(
-              padding: EdgeInsets.only(left: 10),
-              color: Theme.of(context).primaryColor,
-              child: TextFormField(
-                style: TextStyle(color: Colors.white),
-                controller: _textController,
-                decoration: InputDecoration(
-                  hintText: 'Name of the page',
-                  hintStyle: TextStyle(color: Colors.white60),
-                ),
+  }
+
+  Column get _createNewPageBody {
+    return Column(
+      children: <Widget>[
+        _inputText,
+        Expanded(
+          child: _iconGrid,
+        ),
+      ],
+    );
+  }
+
+  FloatingActionButton get _floatingActionButton {
+    return FloatingActionButton(
+      child: Icon(Icons.check),
+      onPressed: () {
+        isEditing ? _editPage() : _cubit.addEvent(_textController.text);
+        if (_textController.text.isNotEmpty) {
+          Navigator.pop(context);
+        }
+      },
+    );
+  }
+
+  Widget get _inputText {
+    return Row(
+      children: [
+        Expanded(
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(10, 10, 15, 10),
+            child: TextField(
+              controller: _textController,
+              focusNode: _focusNode,
+              decoration: InputDecoration(
+                border: OutlineInputBorder(),
+                labelText: 'Enter event title',
               ),
             ),
           ),
-          _iconGrid,
-        ],
-      ),
-      floatingActionButton: floatingActionButton,
+        ),
+      ],
     );
   }
 
@@ -81,18 +116,8 @@ class _CreateNewPageState extends State<CreateNewPage> {
       itemCount: listIcons.length,
       itemBuilder: (context, index) {
         return IconButton(
-          icon: index != _chosenIconIndex
-              ? _circleAvatar(listIcons[index],
-                  color: Theme.of(context).primaryColor)
-              : _circleAvatar(listIcons[index], color: Colors.green),
-          onPressed: () {
-            _changeChosen();
-            setState(
-              () {
-                _chosenIconIndex = index;
-              },
-            );
-          },
+          icon: _circleAvatar(listIcons[index], index),
+          onPressed: () => _cubit.setIndexOfIcon(index),
         );
       },
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -103,15 +128,20 @@ class _CreateNewPageState extends State<CreateNewPage> {
     );
   }
 
-  CircleAvatar _circleAvatar(Icon icon, {color}) {
+  CircleAvatar _circleAvatar(Icon icon, int index) {
     return CircleAvatar(
       child: icon,
-      backgroundColor: Color != null ? color : Colors.white,
+      backgroundColor: index == _cubit.state.indexOfSelectedIcon
+          ? Colors.green
+          : Theme.of(context).primaryColor,
+      foregroundColor: Colors.white,
     );
   }
 
-  bool _changeChosen() {
-    _isIconChosen = !_isIconChosen;
-    return true;
+  void _editPage() {
+    if (_textController.text.isNotEmpty) {
+      eventList[index].title = _textController.text;
+      eventList[index].indexOfAvatar = _cubit.state.indexOfSelectedIcon;
+    }
   }
 }
